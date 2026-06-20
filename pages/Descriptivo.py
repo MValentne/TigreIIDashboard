@@ -97,7 +97,7 @@ def render_sidebar_details(dataframe: pd.DataFrame) -> None:
     st.markdown("#### Descriptivo")
     st.caption("Paso a paso para reproducir los resultados de la página principal.")
 
-    with st.expander("Chi-Cuadrado: proceso completo", expanded=True):
+    with st.expander("Chi-Cuadrado: proceso completo", expanded=False):
         st.write("1. Se cruza la variable cualitativa `Turno` con `Satisfaccion`.")
         st.dataframe(contingency, use_container_width=True)
         st.write("2. Se calculan los totales por fila y columna para obtener las frecuencias esperadas.")
@@ -108,7 +108,7 @@ def render_sidebar_details(dataframe: pd.DataFrame) -> None:
         st.write(f"Grados de libertad: {chi2_result['dof']}")
         st.write(f"p-valor: {format_p_value(chi2_result['p_value'])}")
 
-    with st.expander("Pearson: proceso completo", expanded=True):
+    with st.expander("Pearson: proceso completo", expanded=False):
         detail_frame = _pearson_detail_frame(dataframe)
         st.write("1. Se toman `HorasCapacitacion` y `Ventas` como variables numéricas.")
         st.write("2. Se calculan medias, desviaciones respecto de la media y productos cruzados.")

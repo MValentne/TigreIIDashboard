@@ -64,7 +64,7 @@ def render_sidebar_details(dataframe: pd.DataFrame) -> None:
     st.markdown("#### Inferencial")
     st.caption("Desglose estadístico para reproducir los resultados de la página principal.")
 
-    with st.expander("Chi-Cuadrado inferencial", expanded=True):
+    with st.expander("Chi-Cuadrado inferencial", expanded=False):
         st.markdown("**H0:** Turno y Satisfaccion son independientes.")
         st.markdown("**H1:** Turno y Satisfaccion no son independientes.")
         st.write("Tabla observada:")
@@ -75,14 +75,14 @@ def render_sidebar_details(dataframe: pd.DataFrame) -> None:
         st.write(f"Gl: {chi2_result['dof']}")
         st.write(f"p-valor: {format_p_value(chi2_result['p_value'])}")
 
-    with st.expander("Regresión lineal", expanded=True):
+    with st.expander("Regresión lineal", expanded=False):
         st.write(f"Ecuación: {regression_equation(intercept, slope)}")
         st.dataframe(_regression_summary_frame(modelo), use_container_width=True)
         coef_interval = modelo.conf_int().loc["HorasCapacitacion"]
         st.write(f"Intervalo de confianza de la pendiente: [{coef_interval.iloc[0]:.4f}, {coef_interval.iloc[1]:.4f}]")
         st.write(f"R²: {modelo.rsquared:.4f}")
 
-    with st.expander("Predicción", expanded=True):
+    with st.expander("Predicción", expanded=False):
         horas_sidebar = st.number_input(
             "Horas para predecir",
             min_value=0.0,
