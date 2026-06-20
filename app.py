@@ -14,8 +14,14 @@ from utils.loader import DEFAULT_DATA_PATH, load_dataset
 ROOT_DIR = Path(__file__).resolve().parent
 
 
+def dataset_fingerprint(path: Path = DEFAULT_DATA_PATH) -> tuple[int, int]:
+    """Return a lightweight fingerprint that changes when the Excel changes."""
+    stat_result = path.stat()
+    return stat_result.st_mtime_ns, stat_result.st_size
+
+
 @st.cache_data(show_spinner=False)
-def cached_dataset() -> object:
+def cached_dataset(fingerprint: tuple[int, int]) -> object:
     """Load the Excel dataset once per session."""
     return load_dataset(DEFAULT_DATA_PATH)
 
@@ -42,11 +48,12 @@ def open_dataset_file() -> bool:
 
 def main() -> None:
     """Render the application shell and navigation."""
-    st.set_page_config(page_title="TIGRE II - Página principal", page_icon="📊", layout="wide")
+    st.set_page_config(page_title="TIGRE II - Pagina principal", page_icon="📊", layout="wide")
 
-    dataset = cached_dataset()
-    descriptive_page = load_page_module("pages/1_Descriptivo.py", "page_descriptivo")
-    inferential_page = load_page_module("pages/2_Inferencial.py", "page_inferencial")
+    fingerprint = dataset_fingerprint()
+    dataset = cached_dataset(fingerprint)
+    descriptive_page = load_page_module("pages/Descriptivo.py", "page_descriptivo")
+    inferential_page = load_page_module("pages/Inferencial.py", "page_inferential")
 
     st.markdown(
         """
@@ -102,24 +109,37 @@ def main() -> None:
 
     st.divider()
 
-    descriptive_tab, inferential_tab = st.tabs(["Descriptivo", "Inferencial"])
-
     with st.sidebar:
         st.subheader("Datos")
-        st.caption("Abre el archivo para editarlo y recalcular los análisis al volver a cargar la app.")
+        st.caption("Abre el archivo para editarlo y recalcular los análisis al volver a cargar la pagina principal.")
         if st.button("Abrir Excel", use_container_width=True):
             if not open_dataset_file():
                 st.error("No se pudo abrir el archivo Excel con la aplicación del sistema.")
+        if st.button("Refrescar datos", use_container_width=True):
+            cached_dataset.clear()
+            st.rerun()
+
         st.write(f"Archivo: {DEFAULT_DATA_PATH.name}")
         st.write(f"Registros cargados: {len(dataset)}")
         st.write("Columnas: ID, Turno, Satisfaccion, HorasCapacitacion, Ventas")
-        st.caption("Los cambios en el Excel se reflejan al recargar la página.")
+        st.caption("Los cambios en el Excel se reflejan al recargar o refrescar la pagina principal.")
 
-    with descriptive_tab:
-        descriptive_page.render(dataset)
+        detail_descriptive_tab, detail_inferential_tab = st.tabs(["Descriptivo", "Inferencial"])
+        with detail_descriptive_tab:
+            descriptive_page.render_sidebar_details(dataset)
+        with detail_inferential_tab:
+            inferential_page.render_sidebar_details(dataset)
 
-    with inferential_tab:
-        inferential_page.render(dataset)
+    main_left, main_right = st.columns([1.15, 0.85])
+    with main_left:
+        st.subheader("Accesos rápidos")
+        st.caption("Usa estas páginas para entrar a las vistas reales del dashboard.")
+        st.page_link("pages/Descriptivo.py", label="Abrir Descriptivo", icon="📊")
+        st.page_link("pages/Inferencial.py", label="Abrir Inferencial", icon="📈")
+
+    with main_right:
+        st.subheader("Vista general")
+        st.info("La pagina principal concentra el resumen y el panel lateral mantiene el detalle estadístico completo.")
 
 
 if __name__ == "__main__":

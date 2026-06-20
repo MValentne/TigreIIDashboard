@@ -6,11 +6,18 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from scipy.stats import shapiro
 
 from stats.chi2 import chi2_test, interpretar_chi2
 from stats.regresion import ajustar_modelo, intervalo_confianza, intervalo_prediccion, prediccion
 from stats.validacion import conclusiones_residuos, histograma_residuos, qqplot, residuos_vs_ajustados
 from utils.helpers import format_p_value, regression_equation
+from utils.loader import load_dataset
+
+
+@st.cache_data(show_spinner=False)
+def _load_dataset() -> pd.DataFrame:
+    return load_dataset()
 
 
 def _equation_text(modelo) -> str:
@@ -28,6 +35,70 @@ def _regression_summary_frame(modelo) -> pd.DataFrame:
             "p-valor": [float(modelo.pvalues["const"]), float(modelo.pvalues["HorasCapacitacion"])],
         }
     )
+
+
+def _residual_summary_frame(modelo) -> pd.DataFrame:
+    residuals = pd.Series(modelo.resid, name="residuos")
+    _, shapiro_p = shapiro(residuals)
+    return pd.DataFrame(
+        {
+            "Métrica": ["Media", "Desviación estándar", "Mínimo", "Máximo", "Shapiro p-valor"],
+            "Valor": [
+                float(residuals.mean()),
+                float(residuals.std(ddof=1)),
+                float(residuals.min()),
+                float(residuals.max()),
+                shapiro_p,
+            ],
+        }
+    )
+
+
+def render_sidebar_details(dataframe: pd.DataFrame) -> None:
+    """Render the detailed inferential process inside the sidebar."""
+    chi2_result = chi2_test(dataframe)
+    modelo = ajustar_modelo(dataframe)
+    slope = float(modelo.params["HorasCapacitacion"])
+    intercept = float(modelo.params["const"])
+
+    st.markdown("#### Inferencial")
+    st.caption("Desglose estadístico para reproducir los resultados de la página principal.")
+
+    with st.expander("Chi-Cuadrado inferencial", expanded=True):
+        st.markdown("**H0:** Turno y Satisfaccion son independientes.")
+        st.markdown("**H1:** Turno y Satisfaccion no son independientes.")
+        st.write("Tabla observada:")
+        st.dataframe(chi2_result["contingencia"], use_container_width=True)
+        st.write("Tabla esperada:")
+        st.dataframe(chi2_result["frecuencias_esperadas"], use_container_width=True)
+        st.write(f"Chi-Cuadrado: {chi2_result['chi2']:.4f}")
+        st.write(f"Gl: {chi2_result['dof']}")
+        st.write(f"p-valor: {format_p_value(chi2_result['p_value'])}")
+
+    with st.expander("Regresión lineal", expanded=True):
+        st.write(f"Ecuación: {regression_equation(intercept, slope)}")
+        st.dataframe(_regression_summary_frame(modelo), use_container_width=True)
+        coef_interval = modelo.conf_int().loc["HorasCapacitacion"]
+        st.write(f"Intervalo de confianza de la pendiente: [{coef_interval.iloc[0]:.4f}, {coef_interval.iloc[1]:.4f}]")
+        st.write(f"R²: {modelo.rsquared:.4f}")
+
+    with st.expander("Predicción", expanded=True):
+        horas_sidebar = st.number_input(
+            "Horas para predecir",
+            min_value=0.0,
+            value=float(dataframe["HorasCapacitacion"].mean()),
+            step=0.5,
+            key="sidebar_prediction_hours",
+        )
+        prediction = prediccion(modelo, horas_sidebar)
+        st.metric("Venta esperada", f"{prediction['venta_esperada']:.2f}")
+        st.write(f"IC: [{prediction['intervalo_confianza_inferior']:.2f}, {prediction['intervalo_confianza_superior']:.2f}]")
+        st.write(f"IP: [{prediction['intervalo_prediccion_inferior']:.2f}, {prediction['intervalo_prediccion_superior']:.2f}]")
+
+    with st.expander("Validación de supuestos", expanded=False):
+        st.write("Residuos resumidos:")
+        st.dataframe(_residual_summary_frame(modelo), use_container_width=True)
+        st.info(conclusiones_residuos(modelo))
 
 
 def render(dataframe: pd.DataFrame) -> None:
@@ -80,3 +151,11 @@ def render(dataframe: pd.DataFrame) -> None:
         st.plotly_chart(histograma_residuos(modelo), use_container_width=True)
         st.plotly_chart(qqplot(modelo), use_container_width=True)
         st.info(conclusiones_residuos(modelo))
+
+
+if __name__ == "__main__":
+    st.set_page_config(page_title="TIGRE II - Inferencial", page_icon="📈", layout="wide")
+    dataset = _load_dataset()
+    with st.sidebar:
+        render_sidebar_details(dataset)
+    render(dataset)
