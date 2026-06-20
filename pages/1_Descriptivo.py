@@ -60,20 +60,29 @@ def render(dataframe: pd.DataFrame) -> None:
     chi2_result = chi2_test(dataframe)
     correlation_result = pearson(dataframe)
 
-    metric_columns = st.columns(4)
-    metric_columns[0].metric("Chi-Cuadrado", f"{chi2_result['chi2']:.2f}")
-    metric_columns[1].metric("p-valor", format_p_value(chi2_result["p_value"]))
-    metric_columns[2].metric("r", f"{correlation_result['r']:.3f}")
-    metric_columns[3].metric("R²", f"{correlation_result['r2']:.3f}")
+    with st.container(border=True):
+        metric_columns = st.columns(4)
+        metric_columns[0].metric("Chi-Cuadrado", f"{chi2_result['chi2']:.2f}")
+        metric_columns[1].metric("p-valor", format_p_value(chi2_result["p_value"]))
+        metric_columns[2].metric("r", f"{correlation_result['r']:.3f}")
+        metric_columns[3].metric("R²", f"{correlation_result['r2']:.3f}")
 
-    st.subheader("Sección Chi-Cuadrado")
+    chi2_left, chi2_right = st.columns([1.1, 1])
     contingency = chi2_result["contingencia"]
-    st.dataframe(contingency, use_container_width=True)
-    st.plotly_chart(_contingency_bar_chart(contingency), use_container_width=True)
-    st.info(interpretar_chi2(chi2_result["p_value"]))
+    with chi2_left:
+        with st.container(border=True):
+            st.subheader("Sección Chi-Cuadrado")
+            st.dataframe(contingency, use_container_width=True)
+            st.info(interpretar_chi2(chi2_result["p_value"]))
+    with chi2_right:
+        with st.container(border=True):
+            st.subheader("Frecuencias observadas")
+            st.plotly_chart(_contingency_bar_chart(contingency), use_container_width=True)
 
-    st.subheader("Sección Correlación")
-    st.plotly_chart(_scatter_regression_chart(dataframe), use_container_width=True)
-    st.write(f"Coeficiente r: {correlation_result['r']:.3f}")
-    st.write(f"R²: {correlation_result['r2']:.3f}")
-    st.success(interpretar_r(correlation_result["r"], correlation_result["p_value"]))
+    with st.container(border=True):
+        st.subheader("Sección Correlación")
+        st.plotly_chart(_scatter_regression_chart(dataframe), use_container_width=True)
+        cor_left, cor_right = st.columns(2)
+        cor_left.metric("Coeficiente r", f"{correlation_result['r']:.3f}")
+        cor_right.metric("R²", f"{correlation_result['r2']:.3f}")
+        st.success(interpretar_r(correlation_result["r"], correlation_result["p_value"]))
