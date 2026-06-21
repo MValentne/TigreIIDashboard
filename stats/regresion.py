@@ -21,16 +21,16 @@ def ajustar_modelo(
     return modelo
 
 
-def _prediction_frame(modelo: RegressionResultsWrapper, horas: float, alpha: float = 0.05) -> DataFrame:
+def _prediction_frame(modelo: RegressionResultsWrapper, horas: float, x_col: str = "HorasCapacitacion", alpha: float = 0.05) -> DataFrame:
     """Build a one-row prediction frame for a given number of training hours."""
-    new_data = pd.DataFrame({"HorasCapacitacion": [horas]})
+    new_data = pd.DataFrame({x_col: [horas]})
     new_data = sm.add_constant(new_data, has_constant="add")
     return modelo.get_prediction(new_data).summary_frame(alpha=alpha)
 
 
-def prediccion(modelo: RegressionResultsWrapper, horas: float, alpha: float = 0.05) -> dict[str, float]:
+def prediccion(modelo: RegressionResultsWrapper, horas: float, x_col: str = "HorasCapacitacion", alpha: float = 0.05) -> dict[str, float]:
     """Return a point prediction with confidence and prediction intervals."""
-    summary = _prediction_frame(modelo, horas, alpha=alpha).iloc[0]
+    summary = _prediction_frame(modelo, horas, x_col=x_col, alpha=alpha).iloc[0]
     return {
         "venta_esperada": float(summary["mean"]),
         "intervalo_confianza_inferior": float(summary["mean_ci_lower"]),
@@ -40,13 +40,14 @@ def prediccion(modelo: RegressionResultsWrapper, horas: float, alpha: float = 0.
     }
 
 
-def intervalo_confianza(modelo: RegressionResultsWrapper, horas: float, alpha: float = 0.05) -> tuple[float, float]:
+def intervalo_confianza(modelo: RegressionResultsWrapper, horas: float, x_col: str = "HorasCapacitacion", alpha: float = 0.05) -> tuple[float, float]:
     """Return the confidence interval for the mean predicted value."""
-    summary = _prediction_frame(modelo, horas, alpha=alpha).iloc[0]
+    summary = _prediction_frame(modelo, horas, x_col=x_col, alpha=alpha).iloc[0]
     return float(summary["mean_ci_lower"]), float(summary["mean_ci_upper"])
 
 
-def intervalo_prediccion(modelo: RegressionResultsWrapper, horas: float, alpha: float = 0.05) -> tuple[float, float]:
+def intervalo_prediccion(modelo: RegressionResultsWrapper, horas: float, x_col: str = "HorasCapacitacion", alpha: float = 0.05) -> tuple[float, float]:
     """Return the prediction interval for a new observation."""
-    summary = _prediction_frame(modelo, horas, alpha=alpha).iloc[0]
+    summary = _prediction_frame(modelo, horas, x_col=x_col, alpha=alpha).iloc[0]
     return float(summary["obs_ci_lower"]), float(summary["obs_ci_upper"])
+

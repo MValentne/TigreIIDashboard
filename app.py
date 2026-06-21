@@ -6,6 +6,8 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import ModuleType
 import subprocess
+import sys
+import os
 
 import streamlit as st
 
@@ -40,8 +42,13 @@ def load_page_module(relative_path: str, module_name: str) -> ModuleType:
 def open_dataset_file() -> bool:
     """Open the Excel dataset with the default desktop application."""
     try:
-        subprocess.Popen(["xdg-open", str(DEFAULT_DATA_PATH)])
-    except OSError:
+        if sys.platform.startswith("win"):
+            os.startfile(DEFAULT_DATA_PATH)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(DEFAULT_DATA_PATH)])
+        else:
+            subprocess.Popen(["xdg-open", str(DEFAULT_DATA_PATH)])
+    except Exception:
         return False
     return True
 
@@ -101,11 +108,12 @@ def main() -> None:
         unsafe_allow_html=True,
     )
 
+    cols = list(dataset.columns)
     top_metrics = st.columns(4)
     top_metrics[0].metric("Registros", len(dataset))
-    top_metrics[1].metric("Variables", 5)
-    top_metrics[2].metric("Turnos", dataset["Turno"].nunique())
-    top_metrics[3].metric("Satisfacción", dataset["Satisfaccion"].nunique())
+    top_metrics[1].metric("Variables", len(cols))
+    top_metrics[2].metric(cols[1], dataset[cols[1]].nunique())
+    top_metrics[3].metric(cols[2], dataset[cols[2]].nunique())
 
     st.divider()
 
@@ -121,7 +129,7 @@ def main() -> None:
 
         st.write(f"Archivo: {DEFAULT_DATA_PATH.name}")
         st.write(f"Registros cargados: {len(dataset)}")
-        st.write("Columnas: ID, Turno, Satisfaccion, HorasCapacitacion, Ventas")
+        st.write(f"Columnas: {', '.join(cols)}")
         st.caption("Los cambios en el Excel se reflejan al recargar o refrescar la pagina principal.")
 
         detail_descriptive_tab, detail_inferential_tab = st.tabs(["Descriptivo", "Inferencial"])

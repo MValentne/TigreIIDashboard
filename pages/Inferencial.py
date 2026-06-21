@@ -20,19 +20,19 @@ def _load_dataset() -> pd.DataFrame:
     return load_dataset()
 
 
-def _equation_text(modelo) -> str:
+def _equation_text(modelo, x_col: str) -> str:
     intercept = float(modelo.params["const"])
-    slope = float(modelo.params["HorasCapacitacion"])
+    slope = float(modelo.params[x_col])
     return regression_equation(intercept, slope)
 
 
-def _regression_summary_frame(modelo) -> pd.DataFrame:
+def _regression_summary_frame(modelo, x_col: str) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "Coeficiente": ["Intercepto", "Pendiente"],
-            "Valor": [float(modelo.params["const"]), float(modelo.params["HorasCapacitacion"])],
-            "t": [float(modelo.tvalues["const"]), float(modelo.tvalues["HorasCapacitacion"])],
-            "p-valor": [float(modelo.pvalues["const"]), float(modelo.pvalues["HorasCapacitacion"])],
+            "Valor": [float(modelo.params["const"]), float(modelo.params[x_col])],
+            "t": [float(modelo.tvalues["const"]), float(modelo.tvalues[x_col])],
+            "p-valor": [float(modelo.pvalues["const"]), float(modelo.pvalues[x_col])],
         }
     )
 
@@ -56,17 +56,23 @@ def _residual_summary_frame(modelo) -> pd.DataFrame:
 
 def render_sidebar_details(dataframe: pd.DataFrame) -> None:
     """Render the detailed inferential process inside the sidebar."""
-    chi2_result = chi2_test(dataframe)
-    modelo = ajustar_modelo(dataframe)
-    slope = float(modelo.params["HorasCapacitacion"])
+    cols = list(dataframe.columns)
+    col_cat1 = cols[1]
+    col_cat2 = cols[2]
+    col_num1 = cols[3]
+    col_num2 = cols[4]
+
+    chi2_result = chi2_test(dataframe, fila=col_cat1, columna=col_cat2)
+    modelo = ajustar_modelo(dataframe, x_col=col_num1, y_col=col_num2)
+    slope = float(modelo.params[col_num1])
     intercept = float(modelo.params["const"])
 
     st.markdown("#### Inferencial")
     st.caption("Desglose estadístico para reproducir los resultados de la página principal.")
 
     with st.expander("Chi-Cuadrado inferencial", expanded=False):
-        st.markdown("**H0:** Turno y Satisfaccion son independientes.")
-        st.markdown("**H1:** Turno y Satisfaccion no son independientes.")
+        st.markdown(f"**H0:** `{col_cat1}` y `{col_cat2}` son independientes.")
+        st.markdown(f"**H1:** `{col_cat1}` y `{col_cat2}` no son independientes.")
         st.write("Tabla observada:")
         st.dataframe(chi2_result["contingencia"], use_container_width=True)
         st.write("Tabla esperada:")
@@ -77,21 +83,20 @@ def render_sidebar_details(dataframe: pd.DataFrame) -> None:
 
     with st.expander("Regresión lineal", expanded=False):
         st.write(f"Ecuación: {regression_equation(intercept, slope)}")
-        st.dataframe(_regression_summary_frame(modelo), use_container_width=True)
-        coef_interval = modelo.conf_int().loc["HorasCapacitacion"]
-        st.write(f"Intervalo de confianza de la pendiente: [{coef_interval.iloc[0]:.4f}, {coef_interval.iloc[1]:.4f}]")
+        st.dataframe(_regression_summary_frame(modelo, col_num1), use_container_width=True)
+        coef_interval = modelo.conf_int().loc[col_num1]
         st.write(f"R²: {modelo.rsquared:.4f}")
 
     with st.expander("Predicción", expanded=False):
         horas_sidebar = st.number_input(
-            "Horas para predecir",
+            f"Valor de {col_num1} para predecir",
             min_value=0.0,
-            value=float(dataframe["HorasCapacitacion"].mean()),
+            value=float(dataframe[col_num1].mean()),
             step=0.5,
             key="sidebar_prediction_hours",
         )
-        prediction = prediccion(modelo, horas_sidebar)
-        st.metric("Venta esperada", f"{prediction['venta_esperada']:.2f}")
+        prediction = prediccion(modelo, horas_sidebar, x_col=col_num1)
+        st.metric("Valor esperado", f"{prediction['venta_esperada']:.2f}")
         st.write(f"IC: [{prediction['intervalo_confianza_inferior']:.2f}, {prediction['intervalo_confianza_superior']:.2f}]")
         st.write(f"IP: [{prediction['intervalo_prediccion_inferior']:.2f}, {prediction['intervalo_prediccion_superior']:.2f}]")
 
@@ -103,18 +108,24 @@ def render_sidebar_details(dataframe: pd.DataFrame) -> None:
 
 def render(dataframe: pd.DataFrame) -> None:
     """Render the inferential analysis page."""
+    cols = list(dataframe.columns)
+    col_cat1 = cols[1]
+    col_cat2 = cols[2]
+    col_num1 = cols[3]
+    col_num2 = cols[4]
+
     st.header("Página 2 - Análisis Inferencial")
     st.caption("Detalle estadístico, prueba formal y predicción del modelo lineal.")
 
-    chi2_result = chi2_test(dataframe)
-    modelo = ajustar_modelo(dataframe)
+    chi2_result = chi2_test(dataframe, fila=col_cat1, columna=col_cat2)
+    modelo = ajustar_modelo(dataframe, x_col=col_num1, y_col=col_num2)
 
     chi2_left, chi2_right = st.columns([1.05, 0.95])
     with chi2_left:
         with st.container(border=True):
-            st.subheader("Sección Chi-Cuadrado")
-            st.markdown("**H0:** Turno y Satisfaccion son independientes.")
-            st.markdown("**H1:** Turno y Satisfaccion no son independientes.")
+            st.subheader(f"Sección Chi-Cuadrado ({col_cat1} vs {col_cat2})")
+            st.markdown(f"**H0:** `{col_cat1}` y `{col_cat2}` son independientes.")
+            st.markdown(f"**H1:** `{col_cat1}` y `{col_cat2}` no son independientes.")
             st.dataframe(chi2_result["contingencia"], use_container_width=True)
             st.dataframe(chi2_result["frecuencias_esperadas"], use_container_width=True)
     with chi2_right:
@@ -127,21 +138,28 @@ def render(dataframe: pd.DataFrame) -> None:
             st.success(interpretar_chi2(chi2_result["p_value"]))
 
     with st.container(border=True):
-        st.subheader("Sección Regresión")
-        st.write(f"Ecuación estimada: {_equation_text(modelo)}")
-        st.dataframe(_regression_summary_frame(modelo), use_container_width=True)
-        coef_interval = modelo.conf_int().loc["HorasCapacitacion"]
+        st.subheader(f"Sección Regresión ({col_num1} vs {col_num2})")
+        st.write(f"Ecuación estimada: {_equation_text(modelo, col_num1)}")
+        st.dataframe(_regression_summary_frame(modelo, col_num1), use_container_width=True)
+        coef_interval = modelo.conf_int().loc[col_num1]
         st.write(f"R²: {modelo.rsquared:.4f}")
         st.write(f"Intervalo de confianza del coeficiente de pendiente: [{coef_interval.iloc[0]:.4f}, {coef_interval.iloc[1]:.4f}]")
 
     with st.container(border=True):
         st.subheader("Predicción")
-        horas = st.number_input("Horas de capacitación", min_value=0.0, value=float(dataframe["HorasCapacitacion"].mean()), step=0.5)
-        prediction = prediccion(modelo, horas)
-        ci_low, ci_high = intervalo_confianza(modelo, horas)
-        pi_low, pi_high = intervalo_prediccion(modelo, horas)
+        horas = st.number_input(col_num1, min_value=0.0, value=float(dataframe[col_num1].mean()), step=0.5)
+        
+        # Check extrapolation
+        min_val = float(dataframe[col_num1].min())
+        max_val = float(dataframe[col_num1].max())
+        if horas < min_val or horas > max_val:
+            st.warning(f"Advertencia: El valor {horas:.2f} está fuera del rango observado [{min_val:.2f}, {max_val:.2f}] de `{col_num1}`. Esta predicción es una extrapolación y conlleva un mayor nivel de incertidumbre.")
+            
+        prediction = prediccion(modelo, horas, x_col=col_num1)
+        ci_low, ci_high = intervalo_confianza(modelo, horas, x_col=col_num1)
+        pi_low, pi_high = intervalo_prediccion(modelo, horas, x_col=col_num1)
         prediction_columns = st.columns(3)
-        prediction_columns[0].metric("Venta esperada", f"{prediction['venta_esperada']:.2f}")
+        prediction_columns[0].metric("Valor esperado", f"{prediction['venta_esperada']:.2f}")
         prediction_columns[1].metric("IC", f"[{ci_low:.2f}, {ci_high:.2f}]")
         prediction_columns[2].metric("IP", f"[{pi_low:.2f}, {pi_high:.2f}]")
 

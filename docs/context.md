@@ -374,7 +374,7 @@ Proyecto:
 [x] Diseñar dataset
 [x] Crear datos.xlsx
 [x] Implementar loader.py
-[ ] Validar carga de datos
+[x] Validar carga de datos
 
 ---
 
@@ -458,5 +458,19 @@ El proyecto se considera terminado cuando:
 streamlit run app.py
 
 sin errores.
+
+---
+
+# Mejoras del Proyecto e Implementaciones Recientes (Junio 2026)
+
+## 1. Soporte de Columnas Dinámicas (Desacoplamiento de Excel)
+* El cargador de datos [loader.py](file:///home/valentinomende/Desktop/TigreIIDashboard/utils/loader.py) ahora procesa las variables de forma posicional (las primeras 5 columnas del archivo Excel).
+* Esto permite cambiar los nombres de las columnas en `datos.xlsx` sin necesidad de modificar el código fuente del dashboard. El sistema adapta automáticamente títulos, gráficos, tablas y cálculos a las nuevas etiquetas.
+
+## 2. Portabilidad y Compatibilidad Multiplataforma
+* Se implementó detección automática del sistema operativo en el botón "Abrir Excel" de [app.py](file:///home/valentinomende/Desktop/TigreIIDashboard/app.py) para usar el comando adecuado (`os.startfile` en Windows, `open` en macOS, o `xdg-open` en Linux).
+
+## 3. Control Estadístico de Extrapolación
+* En el módulo inferencial [Inferencial.py](file:///home/valentinomende/Desktop/TigreIIDashboard/pages/Inferencial.py), se integró una advertencia preventiva si se intenta realizar una predicción fuera del rango de datos observados (extrapolación), alertando sobre el incremento del nivel de incertidumbre.
 
 FIN DEL CONTEXTO
