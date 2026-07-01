@@ -11,11 +11,17 @@ import streamlit as st
 from stats.chi2 import chi2_test, interpretar_chi2
 from stats.correlacion import interpretar_r, pearson
 from utils.helpers import format_p_value
-from utils.loader import load_dataset
+from utils.loader import DEFAULT_DATA_PATH, load_dataset
+
+
+def _dataset_fingerprint() -> tuple[int, int]:
+    """Lightweight fingerprint that changes when the Excel file changes."""
+    stat = DEFAULT_DATA_PATH.stat()
+    return stat.st_mtime_ns, stat.st_size
 
 
 @st.cache_data(show_spinner=False)
-def _load_dataset() -> pd.DataFrame:
+def _load_dataset(fingerprint: tuple[int, int]) -> pd.DataFrame:  # noqa: ARG001
     return load_dataset()
 
 
@@ -133,7 +139,6 @@ def render_sidebar_details(dataframe: pd.DataFrame) -> None:
 
 def render(dataframe: pd.DataFrame) -> None:
     """Render the descriptive analysis page."""
-    st.set_page_config(page_title="TIGRE II - Descriptivo", page_icon="📊", layout="wide")
     st.header("Página principal - Análisis Descriptivo")
     st.caption("Resultados resumidos para una lectura rápida y no técnica.")
 
@@ -176,7 +181,7 @@ def render(dataframe: pd.DataFrame) -> None:
 
 if __name__ == "__main__":
     st.set_page_config(page_title="TIGRE II - Descriptivo", page_icon="📊", layout="wide")
-    dataset = _load_dataset()
+    dataset = _load_dataset(_dataset_fingerprint())
     with st.sidebar:
         render_sidebar_details(dataset)
     render(dataset)

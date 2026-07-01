@@ -12,11 +12,17 @@ from stats.chi2 import chi2_test, interpretar_chi2
 from stats.regresion import ajustar_modelo, intervalo_confianza, intervalo_prediccion, prediccion
 from stats.validacion import conclusiones_residuos, histograma_residuos, qqplot, residuos_vs_ajustados
 from utils.helpers import format_p_value, regression_equation
-from utils.loader import load_dataset
+from utils.loader import DEFAULT_DATA_PATH, load_dataset
+
+
+def _dataset_fingerprint() -> tuple[int, int]:
+    """Lightweight fingerprint that changes when the Excel file changes."""
+    stat = DEFAULT_DATA_PATH.stat()
+    return stat.st_mtime_ns, stat.st_size
 
 
 @st.cache_data(show_spinner=False)
-def _load_dataset() -> pd.DataFrame:
+def _load_dataset(fingerprint: tuple[int, int]) -> pd.DataFrame:  # noqa: ARG001
     return load_dataset()
 
 
@@ -173,7 +179,7 @@ def render(dataframe: pd.DataFrame) -> None:
 
 if __name__ == "__main__":
     st.set_page_config(page_title="TIGRE II - Inferencial", page_icon="📈", layout="wide")
-    dataset = _load_dataset()
+    dataset = _load_dataset(_dataset_fingerprint())
     with st.sidebar:
         render_sidebar_details(dataset)
     render(dataset)
