@@ -29,6 +29,6 @@ streamlit run app.py
 ```
 
 ## Notas
-
+- Link del video explicativo de la aplicación (https://drive.google.com/file/d/1TlSAK9b4Pc8UWnzT6iA0T86PkjwmX8Mg/view?usp=sharing)
 - No se usa base de datos.
 - Si cambias `data/datos.xlsx`, la aplicación recalcula los análisis al recargar.
